@@ -10,7 +10,12 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/dotandev/hintents/internal/version"
 )
+
+// UserAgent identifies erst-sdk requests to Stellar node operators.
+var UserAgent = "ERST-SDK/" + version.Version
 
 // authTransport is a custom HTTP RoundTripper that adds authentication headers
 type authTransport struct {
@@ -23,6 +28,19 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.token != "" {
 		// Add Bearer token to Authorization header
 		req.Header.Set("Authorization", "Bearer "+t.token)
+	}
+	return t.transport.RoundTrip(req)
+}
+
+// userAgentTransport sets a User-Agent header identifying the SDK on every request.
+type userAgentTransport struct {
+	transport http.RoundTripper
+}
+
+func (t *userAgentTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Header.Get("User-Agent") == "" {
+		req = req.Clone(req.Context())
+		req.Header.Set("User-Agent", UserAgent)
 	}
 	return t.transport.RoundTrip(req)
 }
@@ -50,6 +68,7 @@ func createHTTPClient(token string, timeout time.Duration, middlewares ...Middle
 	cfg := DefaultRetryConfig()
 
 	transport := http.RoundTripper(http.DefaultTransport)
+	transport = &userAgentTransport{transport: transport}
 	if token != "" {
 		transport = &authTransport{
 			token:     token,

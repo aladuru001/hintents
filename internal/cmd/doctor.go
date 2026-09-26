@@ -146,6 +146,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 			if dep.Fixable {
 				fixableCount++
 				status = "[FAIL*]" // * indicates fixable
+				statusColor = "\033[33m" // Yellow: distinguishes fixable from fatal failures
 			}
 		}
 
