@@ -2,6 +2,7 @@
 /erst
 *.exe
 /simulator/target/
+target/
 node_modules/
 dist/
 bin/

@@ -247,9 +247,9 @@ func (s *wsStreamer) poll(ctx context.Context, conn *wsConn, hash string, id int
 		return true
 	}
 
-	_ = conn.raw.SetReadDeadline(time.Now().Add(15 * time.Second)) //nolint:errcheck
+	_ = conn.raw.SetReadDeadline(time.Now().Add(15 * time.Second)) //nolint:errcheck // deadline failure surfaces via the subsequent read error
 	data, err := wsReadMessage(conn.br)
-	_ = conn.raw.SetDeadline(time.Time{}) //nolint:errcheck
+	_ = conn.raw.SetDeadline(time.Time{}) //nolint:errcheck // clearing the deadline is best-effort cleanup
 	if err != nil {
 		logger.Logger.Warn("ws streamer: read message", "error", err)
 		return true
@@ -426,7 +426,7 @@ type wsConn struct {
 
 func (c *wsConn) close() {
 	// Send a close frame before closing the underlying connection.
-	_ = c.raw.SetWriteDeadline(time.Now().Add(1 * time.Second)) //nolint:errcheck
+	_ = c.raw.SetWriteDeadline(time.Now().Add(1 * time.Second)) //nolint:errcheck // best-effort deadline before a best-effort close frame
 	_ = wsWriteFrame(c.raw, nil)                                // best-effort
 	_ = c.raw.Close()
 }
