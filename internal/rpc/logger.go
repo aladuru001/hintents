@@ -90,9 +90,10 @@ var (
 
 	// bearerRe masks RFC 6750 bearer tokens that appear without a labelled
 	// header name (e.g. an error message that quotes the raw token). The
-	// scheme prefix is preserved so the log stays interpretable.
+	// scheme prefix is preserved so the log stays interpretable. The leading
+	// \b keeps the scheme from matching inside unrelated words.
 	bearerRe = regexp.MustCompile(
-		`(?i)(bearer[[:space:]]+)[A-Za-z0-9\-._~+/]+=*`)
+		`(?i)\b(bearer[[:space:]]+)[A-Za-z0-9\-._~+/]+=*`)
 
 	// labeledSecretRe masks values assigned to secret-looking keys in
 	// "key=value", "key: value", or JSON `"key": "value"` forms. It covers
@@ -104,8 +105,17 @@ var (
 	// preserved; long hexadecimal private keys are only masked here, when
 	// labelled, to keep legitimate transaction and contract hashes visible in
 	// the logs.
+	//
+	// The (^|[^A-Za-z]) guard requires the label to start a word (or the
+	// string), so substrings inside unrelated words — "mapping=", "bypass=",
+	// "spinner=" — no longer redact their values, while env-var forms such as
+	// ERST_PKCS11_PIN still match because an underscore is not a letter. The
+	// value class requires at least one character: with a "*", an
+	// already-redacted "[REDACTED]" (whose '[' is excluded from the class)
+	// would match as an empty value and grow a second placeholder on every
+	// pass, breaking idempotency.
 	labeledSecretRe = regexp.MustCompile(
-		`(?i)("?(?:api[-_]?key|client[-_]?secret|pass(?:word)?|pin|private[-_]?key|secret|seed|signing[-_]?key|signature|token)(?:[-_](?:hex|pem|b64|base64|env|var|file|path|phrase|id))?"?[[:space:]]*[:=][[:space:]]*["']?)([^"'[:space:],;&})\]\[\r\n]*)`)
+		`(?i)((^|[^A-Za-z])"?(?:api[-_]?key|client[-_]?secret|pass(?:word)?|pin|private[-_]?key|secret|seed|signing[-_]?key|signature|token)(?:[-_](?:hex|pem|b64|base64|env|var|file|path|phrase|id))?"?[[:space:]]*[:=][[:space:]]*["']?)([^"'[:space:],;&})\]\[\r\n]+)`)
 )
 
 // SanitizeLogString masks sensitive authorization data and private key
